@@ -1,0 +1,56 @@
+import React from 'react';
+import { Card, CardBody, Avatar } from '@heroui/react';
+import { motion } from 'framer-motion';
+import { Icon } from '@iconify/react';
+import { reviews } from '../data/mock-data';
+
+export const ReviewsSection: React.FC = () => {
+  return (
+    <section id="reviews" className="py-20 bg-content1">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Им уже не страшно. Скоро и тебе не будет.
+          </h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {reviews.map((review, index) => (
+            <motion.div
+              key={review.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <Card className="h-full">
+                <CardBody className="p-6">
+                  <div className="mb-4 text-primary">
+                    <Icon icon="lucide:quote" width={32} height={32} />
+                  </div>
+                  
+                  <p className="mb-6 italic text-foreground-700">"{review.text}"</p>
+                  
+                  <div className="flex items-center mt-auto">
+                    <Avatar
+                      name={review.author.split(',')[0]}
+                      className="mr-4"
+                      size="md"
+                      color="primary"
+                    />
+                    <div>
+                      <h4 className="font-semibold">{review.author}</h4>
+                      <p className="text-sm text-success font-medium">{review.scoreInfo}</p>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default ReviewsSection;
