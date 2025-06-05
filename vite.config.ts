@@ -1,11 +1,13 @@
 import react from "@vitejs/plugin-react";
 import {defineConfig} from "vite";
 
-import vitePluginInjectDataLocator from "./plugins/vite-plugin-inject-data-locator";
+// 1. Можно закомментировать и импорт, чтобы он не висел без дела
+// import vitePluginInjectDataLocator from "./plugins/vite-plugin-inject-data-locator";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), vitePluginInjectDataLocator()],
+  // 2. Закомментируйте плагин здесь, добавив в начале строки //
+  plugins: [react()/*, vitePluginInjectDataLocator()*/], 
   server: {
     allowedHosts: true,
   },

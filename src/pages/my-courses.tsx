@@ -1,3 +1,4 @@
+//src/pages/my-courses.tsx
 import React from 'react';
 import { Link as RouteLink } from 'react-router-dom';
 import { Card, CardBody, Progress, Link } from '@heroui/react';
