@@ -1,13 +1,13 @@
-// src/pages/login.tsx
 import React from 'react';
-import { useHistory, Link as RouteLink } from 'react-router-dom'; // Redirect удален, так как App.tsx управляет редиректом isAuthenticated
-import { Card, CardBody, Input, Button, Link, Divider, addToast } from '@heroui/react'; // CardHeader удален, так как не используется
+import { useHistory, Redirect, Link as RouteLink } from 'react-router-dom';
+import { Card, CardBody, CardHeader, Input, Button, Link, Divider } from '@heroui/react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
+import { addToast } from '@heroui/react';
 import RequestFormModal from '../components/request-form-modal';
 
-// Компонент с демо-учетными данными остается без изменений
+// Added demo credentials component
 const DemoCredentials = () => {
   return (
     <div className="mb-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
@@ -36,44 +36,22 @@ const DemoCredentials = () => {
 const Login: React.FC = () => {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [isLoggingIn, setIsLoggingIn] = React.useState(false); // Переименовано из auth.isLoading для ясности
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const { isAuthenticated, login, user } = useAuth(); // Добавили user для потенциального использования userType при редиректе
+  const [isModalOpen, setIsModalOpen] = React.useState(false); // Added missing state for modal
+  const { isAuthenticated, login } = useAuth();
   const history = useHistory();
 
-  // React.useEffect для редиректа, если пользователь уже аутентифицирован, остается,
-  // но основная логика редиректа после входа теперь будет в App.tsx или здесь, в handleLogin.
+  // Check if already authenticated and redirect
   React.useEffect(() => {
     if (isAuthenticated) {
-      // Вместо history.push('/') можно сделать более умный редирект,
-      // но App.tsx уже должен справляться с этим при изменении isAuthenticated
-      // Если App.tsx не перехватывает, можно добавить логику здесь:
-      if (user) {
-        switch (user.userType) {
-          case 'student':
-            history.push('/dashboard'); // или специфичный путь студента
-            break;
-          case 'teacher':
-            history.push('/teacher/dashboard');
-            break;
-          case 'admin':
-            history.push('/admin/dashboard');
-            break;
-          default:
-            history.push('/dashboard'); // Общий дашборд или главная для аутентифицированных
-            break;
-        }
-      } else {
-        history.push('/dashboard'); // Общий редирект, если user еще не успел обновиться
-      }
+      history.push('/');
     }
-  }, [isAuthenticated, user, history]);
+  }, [isAuthenticated, history]);
 
   const handleLogin = async () => {
     if (!username || !password) {
       setErrorMessage('Пожалуйста, заполните все поля');
-      addToast({ title: "Ошибка валидации", description: "Пожалуйста, заполните все поля.", color: "danger" });
       return;
     }
 
@@ -85,28 +63,26 @@ const Login: React.FC = () => {
       if (success) {
         addToast({
           title: "Успешный вход",
-          description: "Добро пожаловать!", // Сообщение о перенаправлении можно убрать, так как оно произойдет автоматически
+          description: "Добро пожаловать в личный кабинет!",
           color: "success",
         });
-        // Редирект теперь обрабатывается useEffect выше или в App.tsx
-        // history.push('/'); // Можно оставить, если нужен явный редирект на общую страницу после логина
+        history.push('/');
       } else {
-        // Ошибка уже должна быть обработана в authContext и выведена в консоль authService
-        // Здесь мы устанавливаем сообщение для UI
-        setErrorMessage('Неверное имя пользователя или пароль.');
-        addToast({ title: "Ошибка входа", description: "Неверное имя пользователя или пароль.", color: "danger" });
+        setErrorMessage('Неверное имя пользователя или пароль');
       }
-    } catch (error: any) {
-      console.error("Login page error:", error);
-      const message = error.message || 'Произошла ошибка при входе. Попробуйте снова.';
-      setErrorMessage(message);
-      addToast({ title: "Ошибка входа", description: message, color: "danger" });
+    } catch (error) {
+      console.error("Login error:", error);
+      setErrorMessage('Произошла ошибка при входе');
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  // handleKeyPress остается без изменений
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -123,7 +99,6 @@ const Login: React.FC = () => {
                 <span className="font-bold text-2xl">Munificent School</span>
               </div>
             </Link>
-            {/* Заголовки остаются без изменений */}
             <h1 className="mt-6 text-3xl font-bold">Вход в личный кабинет</h1>
             <p className="mt-2 text-foreground-500">Введите свои данные для входа в систему</p>
           </div>
@@ -136,6 +111,7 @@ const Login: React.FC = () => {
                 </div>
               )}
               
+              {/* Added demo credentials */}
               <DemoCredentials />
               
               <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
@@ -145,7 +121,6 @@ const Login: React.FC = () => {
                   value={username}
                   onValueChange={setUsername}
                   isRequired
-                  autoComplete="username"
                 />
                 
                 <Input
@@ -155,11 +130,8 @@ const Login: React.FC = () => {
                   onValueChange={setPassword}
                   type="password"
                   isRequired
-                  autoComplete="current-password"
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 />
                 
-                {/* Остальная часть формы без изменений */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <input
@@ -184,7 +156,7 @@ const Login: React.FC = () => {
                   type="submit"
                   color="primary"
                   fullWidth
-                  isLoading={isLoggingIn} // Используем локальное состояние isLoggingIn
+                  isLoading={isLoggingIn}
                 >
                   Войти
                 </Button>
@@ -208,7 +180,7 @@ const Login: React.FC = () => {
               
               <div className="mt-6 text-center">
                 <Link as={RouteLink} to="/" color="foreground" className="text-sm">
-                  <Icon icon="lucide:arrow-left" className="inline mr-1" width={14} height={14} />
+                  <Icon icon="lucide:arrow-left" className="inline mr-1" size={14} />
                   Вернуться на главную
                 </Link>
               </div>
@@ -217,6 +189,7 @@ const Login: React.FC = () => {
         </motion.div>
       </div>
       
+      {/* Add RequestFormModal to the component */}
       <RequestFormModal 
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}

@@ -68,7 +68,6 @@ export interface BlogPost {
 
 // User type for authentication
 export interface User {
-  id: number;
   username: string;
   role: 'student' | 'teacher' | 'admin';
   name: string;

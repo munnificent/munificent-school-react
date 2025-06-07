@@ -1,30 +1,26 @@
-// src/components/app-layout.tsx
 import React from 'react';
 import { Link as RouteLink, useLocation, useHistory } from 'react-router-dom';
 import { Button, Link } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { useAuth } from '../contexts/auth-context'; 
+import { useAuth } from '../contexts/auth-context';
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  userType?: string | null; // userType приходит как пропс
+  userType?: string | null;
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ children, userType }) => { // userType извлекается из props
-  
-  console.log('AppLayout PROPS userType:', userType); // <--- ДОБАВЬТЕ CONSOLE.LOG СЮДА
-
+export const AppLayout: React.FC<AppLayoutProps> = ({ children, userType }) => {
   const location = useLocation();
   const history = useHistory();
-  const { logout } = useAuth(); // Получаем logout из контекста
+  const { logout } = useAuth();
   
-  // Define navigation items based on userType (который пришел из props)
+  // Define navigation items based on user type
   const navItems = React.useMemo(() => {
     const baseItems = [
       { path: '/dashboard', label: 'Главная', icon: 'lucide:home' }
     ];
     
-    switch (userType) { // Здесь используется userType из props
+    switch (userType) {
       case 'student':
         return [
           ...baseItems,
@@ -35,32 +31,27 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, userType }) => {
       case 'teacher':
         return [
           ...baseItems,
-          // Убрал /my-courses для учителя, так как у него свой дашборд и TeacherStudents
-          // Если курсы для учителя тоже нужны, можно вернуть
-          { path: '/teacher/dashboard', label: 'Мои курсы (учитель)', icon: 'lucide:book-open' }, // Пример пути
+          { path: '/my-courses', label: 'Мои курсы', icon: 'lucide:book-open' },
           { path: '/students', label: 'Ученики', icon: 'lucide:users' },
           { path: '/profile', label: 'Профиль', icon: 'lucide:user' }
         ];
       case 'admin':
         return [
-          ...baseItems, // Дашборд администратора обычно на /admin/dashboard или просто /dashboard
+          ...baseItems,
           { path: '/users', label: 'Пользователи', icon: 'lucide:users' },
-          { path: '/admin/courses', label: 'Курсы (Админ)', icon: 'lucide:book-open' }, // Пример пути
+          { path: '/courses', label: 'Курсы', icon: 'lucide:book-open' },
           { path: '/requests', label: 'Заявки', icon: 'lucide:clipboard' },
           { path: '/settings', label: 'Настройки', icon: 'lucide:settings' }
         ];
       default:
-        // Если userType null или не соответствует, показываем только "Главная" или ничего
-        // Можно также сделать редирект или показать сообщение об ошибке,
-        // но это лучше делать в App.tsx
-        return baseItems; 
+        return baseItems;
     }
   }, [userType]);
   
   const handleLogout = () => {
     try {
       logout();
-      history.push('/'); // После выхода перенаправляем на главную или страницу входа
+      history.push('/');
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -113,10 +104,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, userType }) => {
         </div>
       </aside>
       
-      {/* Mobile navigation (остается без изменений, но также зависит от navItems) */}
+      {/* Mobile navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-content1 border-t border-divider md:hidden z-50">
         <div className="flex justify-around p-2">
-          {navItems.slice(0, 4).map((item) => { // Показываем первые 4 элемента + выход
+          {navItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path;
             
             return (
@@ -133,6 +124,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, userType }) => {
               </Link>
             );
           })}
+          
+          {/* Add logout button to mobile navigation */}
           <button
             onClick={handleLogout}
             className="flex flex-col items-center p-2 text-danger"
