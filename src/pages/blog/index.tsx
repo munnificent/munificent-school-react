@@ -1,42 +1,69 @@
-import React from 'react';
-import { Card, CardBody, CardFooter, Button, Select, SelectItem } from '@heroui/react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardBody, CardFooter, Button, Select, SelectItem, Spinner, Input } from '@heroui/react';
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import Header from '../../components/header';
 import Footer from '../../components/footer';
 import RequestFormModal from '../../components/request-form-modal';
-import { blogPosts, blogCategories } from '../../data/blog-data';
+import apiClient from '../../api/apiClient';
+import { BlogPost, BlogCategory } from '../../types';
 
 const Blog: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [selectedCategory, setSelectedCategory] = React.useState(new Set(["Все"]));
-  const [searchQuery, setSearchQuery] = React.useState("");
-  
-  // Filter posts based on category and search query
-  const filteredPosts = React.useMemo(() => {
-    const category = Array.from(selectedCategory)[0];
-    
-    return blogPosts.filter(post => {
-      // Filter by category
-      const categoryMatch = category === "Все" || post.category === category;
-      
-      // Filter by search query
-      const searchMatch = searchQuery === "" || 
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author.toLowerCase().includes(searchQuery.toLowerCase());
-        
-      return categoryMatch && searchMatch;
-    });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Загрузка постов при изменении фильтров
+  const fetchPosts = useCallback(async () => {
+    if (!selectedCategory) return;
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedCategory !== "Все") {
+        params.append('category__name', selectedCategory);
+      }
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
+      const postsResponse = await apiClient.get(`/blog/posts/?${params.toString()}`);
+      setPosts(postsResponse.data);
+    } catch (error) {
+      console.error("Failed to fetch blog posts:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedCategory, searchQuery]);
-  
+
+  // Загрузка категорий (один раз)
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesResponse = await apiClient.get('/blog/categories/');
+        setCategories([{ id: 0, name: "Все", slug: "all" }, ...categoriesResponse.data]);
+        setSelectedCategory("Все");
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+        setIsLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Запускаем загрузку постов, когда меняются фильтры
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
   return (
     <>
       <Header onOpenModal={() => setIsModalOpen(true)} />
-      
       <main>
-        {/* Hero Section */}
+        {/* Секция 1: Шапка страницы (Hero) */}
         <section className="bg-content1 pt-16 pb-20">
           <div className="container mx-auto px-4 max-w-7xl">
             <motion.div
@@ -53,86 +80,68 @@ const Blog: React.FC = () => {
           </div>
         </section>
         
-        {/* Blog Posts */}
+        {/* Секция 2: Список постов с фильтрами */}
         <section className="py-20 bg-background">
           <div className="container mx-auto px-4 max-w-7xl">
-            {/* Filter and Search */}
+            {/* Фильтры и поиск */}
             <div className="flex flex-col md:flex-row gap-4 mb-12 justify-between">
               <Select
                 label="Категория"
-                selectedKeys={selectedCategory}
-                onSelectionChange={setSelectedCategory as any}
+                selectedKeys={selectedCategory ? new Set([selectedCategory]) : new Set()}
+                onSelectionChange={(keys) => setSelectedCategory(Array.from(keys)[0] as string)}
                 className="max-w-xs"
+                isDisabled={categories.length === 0}
               >
-                {blogCategories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {categories.map((category) => (
+                  <SelectItem key={category.name} textValue={category.name}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </Select>
               
-              <div className="relative max-w-md w-full">
-                <input
-                  type="text"
+              <Input
                   placeholder="Поиск статей..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 pl-10 rounded-lg border border-divider focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                  <Icon icon="lucide:search" width={18} height={18} className="text-foreground-500" />
-                </div>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                  >
-                    <Icon icon="lucide:x" width={16} height={16} className="text-foreground-500" />
-                  </button>
-                )}
-              </div>
+                  onValueChange={setSearchQuery}
+                  startContent={<Icon icon="lucide:search" width={18} height={18} className="text-foreground-500" />}
+                  onClear={() => setSearchQuery("")}
+                  isClearable
+                  className="max-w-md w-full"
+              />
             </div>
             
-            {/* Blog Grid */}
-            {filteredPosts.length > 0 ? (
+            {/* Сетка постов */}
+            {isLoading ? (
+              <div className="text-center py-16"><Spinner size="lg" label="Загрузка статей..." /></div>
+            ) : posts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredPosts.map((post, index) => (
+                {posts.map((post, index) => (
                   <motion.div
                     key={post.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                   >
-                    <Card className="h-full">
-                      <div className="relative h-48 overflow-hidden">
-                        <img 
-                          src={post.imageUrl} 
-                          alt={post.title}
-                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                        />
-                        <div className="absolute top-2 left-2">
-                          <span className="bg-primary text-white text-xs px-2 py-1 rounded-md">
-                            {post.category}
-                          </span>
+                    <Card isHoverable className="h-full">
+                      <CardBody className="p-0">
+                        <div className="relative h-48 overflow-hidden">
+                            <img src={post.image_url} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
+                            <div className="absolute top-2 left-2">
+                                <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-md">{post.category_name}</span>
+                            </div>
                         </div>
-                      </div>
-                      <CardBody className="p-6">
-                        <h3 className="text-xl font-semibold mb-2 line-clamp-2">{post.title}</h3>
-                        <p className="text-foreground-600 text-sm mb-4 line-clamp-3">{post.excerpt}</p>
-                        <div className="flex items-center gap-2 text-sm text-foreground-500 mt-auto">
-                          <span>{post.date}</span>
-                          <span>•</span>
-                          <span>{post.author}</span>
+                        <div className="p-6 flex flex-col flex-grow">
+                          <h3 className="text-xl font-semibold mb-2 line-clamp-2 flex-grow">{post.title}</h3>
+                          <p className="text-foreground-600 text-sm mb-4 line-clamp-3">{post.excerpt}</p>
+                          <div className="flex items-center gap-2 text-sm text-foreground-500 mt-auto">
+                            <span>{new Date(post.created_at).toLocaleDateString('ru-RU')}</span>
+                            <span>•</span>
+                            <span>{post.author_name}</span>
+                          </div>
                         </div>
                       </CardBody>
                       <CardFooter className="pt-0 pb-6 px-6">
-                        <Button
-                          as={RouterLink}
-                          to={`/blog/${post.id}`}
-                          color="primary"
-                          variant="light"
-                          endContent={<Icon icon="lucide:arrow-right" width={16} height={16} />}
-                        >
+                        <Button as={RouterLink} to={`/blog/${post.id}`} color="primary" variant="light" endContent={<Icon icon="lucide:arrow-right" width={16} height={16} />}>
                           Читать статью
                         </Button>
                       </CardFooter>
@@ -152,7 +161,7 @@ const Blog: React.FC = () => {
                   variant="flat"
                   onPress={() => {
                     setSearchQuery("");
-                    setSelectedCategory(new Set(["Все"]));
+                    setSelectedCategory("Все");
                   }}
                 >
                   Сбросить фильтры
@@ -162,7 +171,7 @@ const Blog: React.FC = () => {
           </div>
         </section>
         
-        {/* Subscribe Section */}
+        {/* Секция 3: Подписка на рассылку */}
         <section className="py-20 bg-content1">
           <div className="container mx-auto px-4 max-w-7xl">
             <div className="max-w-3xl mx-auto text-center">
@@ -176,17 +185,16 @@ const Blog: React.FC = () => {
                 <p className="text-foreground-600 mb-8">
                   Подпишитесь на нашу рассылку и получайте новые статьи, советы экспертов и полезные материалы для учебы.
                 </p>
-                
-                <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-                  <input
+                <form className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
+                  <Input
                     type="email"
                     placeholder="Ваш email"
-                    className="flex-grow px-4 py-2 rounded-lg border border-divider focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                    aria-label="Email для подписки"
                   />
-                  <Button color="primary">
+                  <Button type="submit" color="primary">
                     Подписаться
                   </Button>
-                </div>
+                </form>
               </motion.div>
             </div>
           </div>

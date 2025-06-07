@@ -54,17 +54,27 @@ export interface TestQuestion {
   correctOptionIndex?: number; // For result calculation
 }
 
+
 // Blog post type
 export interface BlogPost {
   id: number;
   title: string;
   excerpt: string;
   content: string;
-  author: string;
-  date: string;
-  imageUrl: string;
-  category: string;
+  author_name: string; // Поле из сериализатора
+  created_at: string;  // Django отдает дату как строку в формате ISO
+  image_url: string;
+  category: number; // ID категории
+  category_name: string; // Имя категории из сериализатора
 }
+
+// Тип для категорий блога
+export interface BlogCategory {
+    id: number;
+    name: string;
+    slug: string;
+}
+
 
 // User type for authentication
 export interface User {

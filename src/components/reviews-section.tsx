@@ -1,10 +1,28 @@
-import React from 'react';
-import { Card, CardBody, Avatar } from '@heroui/react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardBody, Avatar, Spinner } from '@heroui/react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
-import { reviews } from '../data/mock-data';
+import { Review } from '../types';
+import apiClient from '../api/apiClient';
 
 export const ReviewsSection: React.FC = () => {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const response = await apiClient.get('/reviews/');
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Failed to fetch reviews:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReviews();
+  }, []);
+
   return (
     <section id="reviews" className="py-20 bg-content1">
       <div className="container mx-auto px-4 max-w-7xl">
@@ -14,40 +32,42 @@ export const ReviewsSection: React.FC = () => {
           </h2>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {reviews.map((review, index) => (
-            <motion.div
-              key={review.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Card className="h-full">
-                <CardBody className="p-6">
-                  <div className="mb-4 text-primary">
-                    <Icon icon="lucide:quote" width={32} height={32} />
-                  </div>
-                  
-                  <p className="mb-6 italic text-foreground-700">"{review.text}"</p>
-                  
-                  <div className="flex items-center mt-auto">
-                    <Avatar
-                      name={review.author.split(',')[0]}
-                      className="mr-4"
-                      size="md"
-                      color="primary"
-                    />
-                    <div>
-                      <h4 className="font-semibold">{review.author}</h4>
-                      <p className="text-sm text-success font-medium">{review.scoreInfo}</p>
+        {isLoading ? (
+          <div className="flex justify-center"><Spinner size="lg" /></div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {reviews.map((review, index) => (
+              <motion.div
+                key={review.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card className="h-full">
+                  <CardBody className="p-6">
+                    <div className="mb-4 text-primary">
+                      <Icon icon="lucide:quote" width={32} height={32} />
                     </div>
-                  </div>
-                </CardBody>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                    <p className="mb-6 italic text-foreground-700">"{review.text}"</p>
+                    <div className="flex items-center mt-auto">
+                      <Avatar
+                        name={review.author.split(',')[0]}
+                        className="mr-4"
+                        size="md"
+                        color="primary"
+                      />
+                      <div>
+                        <h4 className="font-semibold">{review.author}</h4>
+                        <p className="text-sm text-success font-medium">{review.scoreInfo}</p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

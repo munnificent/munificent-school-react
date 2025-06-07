@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardBody, Select, SelectItem, Button } from '@heroui/react';
 import { motion } from 'framer-motion';
 import { classOptions, subjectOptions, lessonCountOptions } from '../data/mock-data';
@@ -8,28 +8,23 @@ interface CalculatorProps {
 }
 
 export const Calculator: React.FC<CalculatorProps> = ({ onOpenModal }) => {
-  const [selectedEducationType, setSelectedEducationType] = React.useState(new Set([]));
-  const [selectedClass, setSelectedClass] = React.useState(new Set([]));
-  const [selectedSubjects, setSelectedSubjects] = React.useState<Set<string>>(new Set([]));
-  const [selectedLessonCount, setSelectedLessonCount] = React.useState(new Set([]));
+  const [selectedEducationType, setSelectedEducationType] = useState<Set<string>>(new Set([]));
+  const [selectedClass, setSelectedClass] = useState<Set<string>>(new Set([]));
+  const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(new Set([]));
+  const [selectedLessonCount, setSelectedLessonCount] = useState<Set<string>>(new Set([]));
   
-  // Calculate price based on selections
-  const calculatedPrice = React.useMemo(() => {
+  const calculatedPrice = useMemo(() => {
     if (selectedEducationType.size === 0 || selectedClass.size === 0 || selectedSubjects.size === 0 || selectedLessonCount.size === 0) {
       return null;
     }
-    
-    const basePrice = 3750; // Base price per lesson
+    const basePrice = 3750;
     const lessonCount = Number(Array.from(selectedLessonCount)[0]);
     const subjectCount = selectedSubjects.size;
     const educationType = Array.from(selectedEducationType)[0];
-    
-    // Apply multipliers based on education type
     let multiplier = 1;
     if (educationType === 'ент') {
-      multiplier = 1.2; // ENT preparation costs 20% more
+      multiplier = 1.2;
     }
-    
     return basePrice * lessonCount * subjectCount * multiplier;
   }, [selectedEducationType, selectedClass, selectedSubjects, selectedLessonCount]);
 
@@ -53,28 +48,28 @@ export const Calculator: React.FC<CalculatorProps> = ({ onOpenModal }) => {
               <div className="flex flex-col gap-6">
                 <div>
                   <h3 className="text-lg font-medium mb-2">Шаг 1: Выберите тип обучения</h3>
-                  <Select 
+                  <Select
+                    label="Тип обучения" // ИСПРАВЛЕНИЕ: Добавлен label
                     placeholder="Выберите тип обучения" 
                     selectedKeys={selectedEducationType}
-                    onSelectionChange={setSelectedEducationType as any}
+                    onSelectionChange={(keys) => setSelectedEducationType(keys as Set<string>)}
                   >
-                    <SelectItem key="школа" value="школа">Школьная программа (1-11 класс)</SelectItem>
-                    <SelectItem key="ент" value="ент">Подготовка к ЕНТ</SelectItem>
+                    <SelectItem key="школа" textValue="Школьная программа (1-11 класс)">Школьная программа (1-11 класс)</SelectItem>
+                    <SelectItem key="ент" textValue="Подготовка к ЕНТ">Подготовка к ЕНТ</SelectItem>
                   </Select>
                 </div>
                 
                 <div>
                   <h3 className="text-lg font-medium mb-2">Шаг 2: Выберите класс</h3>
                   <Select 
+                    label="Класс" // ИСПРАВЛЕНИЕ: Добавлен label
                     placeholder="Выберите класс" 
                     selectedKeys={selectedClass}
-                    onSelectionChange={setSelectedClass as any}
+                    onSelectionChange={(keys) => setSelectedClass(keys as Set<string>)}
                     isDisabled={selectedEducationType.size === 0}
                   >
                     {classOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
+                      <SelectItem key={option} textValue={option}>{option}</SelectItem>
                     ))}
                   </Select>
                 </div>
@@ -82,19 +77,15 @@ export const Calculator: React.FC<CalculatorProps> = ({ onOpenModal }) => {
                 <div>
                   <h3 className="text-lg font-medium mb-2">Шаг 3: Выберите предметы</h3>
                   <Select 
+                    label="Предметы" // ИСПРАВЛЕНИЕ: Добавлен label
                     placeholder="Выберите предметы"
                     selectedKeys={selectedSubjects}
-                    onSelectionChange={setSelectedSubjects as any}
+                    onSelectionChange={(keys) => setSelectedSubjects(keys as Set<string>)}
                     isDisabled={selectedClass.size === 0}
                     selectionMode="multiple"
-                    classNames={{
-                      value: "line-clamp-1"
-                    }}
                   >
                     {subjectOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
+                      <SelectItem key={option} textValue={option}>{option}</SelectItem>
                     ))}
                   </Select>
                   {selectedSubjects.size > 0 && (
@@ -107,15 +98,14 @@ export const Calculator: React.FC<CalculatorProps> = ({ onOpenModal }) => {
                 <div>
                   <h3 className="text-lg font-medium mb-2">Шаг 4: Количество занятий в месяц</h3>
                   <Select 
+                    label="Количество занятий" // ИСПРАВЛЕНИЕ: Добавлен label
                     placeholder="Выберите количество занятий"
                     selectedKeys={selectedLessonCount}
-                    onSelectionChange={setSelectedLessonCount as any}
+                    onSelectionChange={(keys) => setSelectedLessonCount(keys as Set<string>)}
                     isDisabled={selectedSubjects.size === 0}
                   >
                     {lessonCountOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
+                      <SelectItem key={option} textValue={String(option)}>{option}</SelectItem>
                     ))}
                   </Select>
                 </div>

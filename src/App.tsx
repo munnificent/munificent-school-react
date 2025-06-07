@@ -18,7 +18,7 @@ import AppLayout from './components/app-layout';
 import Login from './pages/login';
 import AboutUs from './pages/about-us';
 import Courses from './pages/courses';
-import Blog from './pages/blog';
+import Blog from './pages/blog/index';
 import BlogDetail from './pages/blog/blog-detail';
 import { useAuth } from './contexts/auth-context';
 
@@ -56,12 +56,13 @@ function App() {
       <Route path="/courses">
         <Courses />
       </Route>
-      <Route exact path="/blog">
-        <Blog />
-      </Route>
-      <Route path="/blog/:id">
-        <BlogDetail />
-      </Route>
+     <Route exact path="/blog"> 
+       <Blog />
+     </Route>
+     <Route path="/blog/:id">
+      <BlogDetail />
+     </Route>
+      
       
       {/* Protected routes - require authentication */}
       <Route>

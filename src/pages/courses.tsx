@@ -201,18 +201,20 @@ const Courses: React.FC = () => {
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {[
-                {name: "Математика", icon: "lucide:square-root"},
-                {name: "Физика", icon: "lucide:atom"},
-                {name: "Химия", icon: "lucide:flasks"},
-                {name: "Биология", icon: "lucide:microscope"},
-                {name: "История", icon: "lucide:book-open"},
-                {name: "География", icon: "lucide:globe"},
-                {name: "Казахский язык", icon: "lucide:languages"},
-                {name: "Русский язык", icon: "lucide:book-text"},
-                {name: "Английский язык", icon: "lucide:languages"},
-                {name: "Информатика", icon: "lucide:code"},
-                {name: "Литература", icon: "lucide:book-marked"},
-                {name: "Подготовка к ЕНТ", icon: "lucide:graduation-cap"}
+                {name: "Математика", icon: "lucide:calculator"},
+    {name: "Физика", icon: "lucide:atom"},
+    {name: "Химия", icon: "lucide:flask-conical"},
+    {name: "Биология", icon: "lucide:microscope"},
+    {name: "История", icon: "lucide:book-open"},
+    {name: "География", icon: "lucide:globe"},
+    {name: "Казахский язык", icon: "lucide:languages"},
+    {name: "Русский язык", icon: "lucide:book-text"},
+    {name: "Английский язык", icon: "lucide:languages"},
+    {name: "Информатика", icon: "lucide:code"},
+    {name: "Литература", icon: "lucide:book-marked"},
+    {name: "Подготовка к ЕНТ", icon: "lucide:graduation-cap"}
+
+                
               ].map((subject, index) => (
                 <motion.div
                   key={index}
@@ -347,7 +349,8 @@ const Courses: React.FC = () => {
                 color="secondary" 
                 size="lg"
                 onPress={() => setIsModalOpen(true)}
-                className="font-medium text-foreground-800"
+                // ИСПРАВЛЕНИЕ 2: Добавлены классы для переноса текста
+                className="font-medium text-foreground-800 whitespace-normal h-auto"
               >
                 Записаться на бесплатную консультацию
               </Button>

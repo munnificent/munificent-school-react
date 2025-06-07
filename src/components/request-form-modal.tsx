@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Modal, 
   ModalContent, 
@@ -9,10 +9,12 @@ import {
   Input,
   Select,
   SelectItem,
-  Textarea
+  Textarea,
+  addToast
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { classOptions, subjectOptions } from '../data/mock-data';
+import apiClient from '../api/apiClient';
 
 interface RequestFormModalProps {
   isOpen: boolean;
@@ -23,42 +25,61 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
   isOpen, 
   onOpenChange 
 }) => {
-  const [name, setName] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [selectedClass, setSelectedClass] = React.useState(new Set([]));
-  const [selectedSubject, setSelectedSubject] = React.useState(new Set([]));
-  const [comment, setComment] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selectedClass, setSelectedClass] = useState<Set<string>>(new Set([]));
+  const [selectedSubject, setSelectedSubject] = useState<Set<string>>(new Set([]));
+  const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const clearForm = () => {
+    setName("");
+    setPhone("");
+    setSelectedClass(new Set([]));
+    setSelectedSubject(new Set([]));
+    setComment("");
+  }
   
   const handleWhatsAppContact = () => {
-    // Format phone for WhatsApp API
-    const whatsappPhone = "77771234567"; // Hardcoded school's WhatsApp number
+    const whatsappPhone = "77771234567"; // Пример номера
     const message = `Здравствуйте! Я хотел(а) бы узнать подробнее о курсах Munificent School.`;
-    
-    // Create WhatsApp link
     const whatsappLink = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
-    
-    // Open WhatsApp in new tab
     window.open(whatsappLink, '_blank');
   };
-  
-  const handleSubmit = () => {
+
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    const payload = {
+      name: name,
+      phone: phone,
+      student_class: Array.from(selectedClass)[0] || "",
+      subject: Array.from(selectedSubject)[0] || "",
+      comment: comment
+    };
+
+    try {
+      await apiClient.post('/applications/', payload);
+      
+      addToast({
+        title: "Заявка отправлена!",
+        description: "Наш менеджер скоро с вами свяжется.",
+        color: "success",
+      });
+
+      clearForm();
       onOpenChange(false);
-      
-      // Reset form
-      setName("");
-      setPhone("");
-      setSelectedClass(new Set([]));
-      setSelectedSubject(new Set([]));
-      setComment("");
-      
-      // You would typically show a success toast here
-    }, 1500);
+
+    } catch (error) {
+      console.error("Failed to submit application:", error);
+      addToast({
+        title: "Ошибка",
+        description: "Не удалось отправить заявку. Пожалуйста, попробуйте позже.",
+        color: "danger",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -78,7 +99,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   onValueChange={setName}
                   isRequired
                 />
-                
                 <Input
                   label="Номер телефона"
                   placeholder="+7 (___) ___-__-__"
@@ -87,34 +107,33 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   isRequired
                   type="tel"
                 />
-                
                 <Select
                   label="Выберите класс"
                   placeholder="Выберите класс ученика"
                   selectedKeys={selectedClass}
-                  onSelectionChange={setSelectedClass as any}
+                  onSelectionChange={(keys) => setSelectedClass(keys as Set<string>)}
                   isRequired
                 >
                   {classOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
+                    // ИСПРАВЛЕНИЕ 1: Убран 'value'
+                    <SelectItem key={option}>
                       {option}
                     </SelectItem>
                   ))}
                 </Select>
-                
                 <Select
                   label="Выберите предмет"
                   placeholder="Выберите предмет"
                   selectedKeys={selectedSubject}
-                  onSelectionChange={setSelectedSubject as any}
+                  onSelectionChange={(keys) => setSelectedSubject(keys as Set<string>)}
                 >
                   {subjectOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
+                    // ИСПРАВЛЕНИЕ 2: Убран 'value'
+                    <SelectItem key={option}>
                       {option}
                     </SelectItem>
                   ))}
                 </Select>
-                
                 <Textarea
                   label="Комментарий"
                   placeholder="Дополнительная информация (опционально)"
