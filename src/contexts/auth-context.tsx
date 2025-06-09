@@ -1,97 +1,101 @@
-import React from 'react';
+// src/contexts/auth-context.tsx
+
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import apiClient from '../api/apiClient';
+import { User } from '../types'; // Импортируем обновленный тип User
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  userType: string | null;
+  user: User | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
-export const AuthContext = React.createContext<AuthContextType>({
+// Контекст с обновленным типом
+export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
-  userType: null,
+  user: null,
   isLoading: true,
   login: async () => false,
   logout: () => {}
 });
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(false);
-  const [userType, setUserType] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // Теперь храним всего пользователя, а не только его тип
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Check for stored auth on mount
-  React.useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const storedAuth = localStorage.getItem('isAuthenticated');
-        const storedUserType = localStorage.getItem('userType');
-        
-        if (storedAuth === 'true' && storedUserType) {
-          setIsAuthenticated(true);
-          setUserType(storedUserType);
-        }
-      } catch (error) {
-        console.error("Error checking authentication:", error);
-      } finally {
-        // Always set loading to false, even if there's an error
-        setIsLoading(false);
-      }
-    };
-    
-    // Small timeout to ensure localStorage is available
-    setTimeout(checkAuth, 100);
+  // Функция для получения данных пользователя
+  const fetchUser = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/users/me/');
+      setUser(data);
+      setIsAuthenticated(true);
+      return data;
+    } catch (error) {
+      console.error("Failed to fetch user", error);
+      // Если не удалось получить юзера (например, токен истек), выходим из системы
+      logout();
+      return null;
+    }
   }, []);
 
-  // Login function
-  const login = async (username: string, password: string): Promise<boolean> => {
-    try {
-      // In a real app, this would be an API call
-      // For demo purposes, use hardcoded values
-      if (password === '123456') {
-        if (username === 'student') {
-          setUserType('student');
-          setIsAuthenticated(true);
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userType', 'student');
-          return true;
-        } else if (username === 'teacher') {
-          setUserType('teacher');
-          setIsAuthenticated(true);
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userType', 'teacher');
-          return true;
-        } else if (username === 'admin') {
-          setUserType('admin');
-          setIsAuthenticated(true);
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userType', 'admin');
-          return true;
-        }
+  // Проверка токена при загрузке приложения
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken) {
+        // Устанавливаем заголовок для последующих запросов
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        await fetchUser();
       }
-      return false;
-    } catch (error) {
-      console.error("Login error:", error);
-      return false;
-    }
-  };
+      setIsLoading(false);
+    };
 
-  // Logout function
-  const logout = () => {
+    checkAuthStatus();
+  }, [fetchUser]);
+
+  // Функция входа в систему
+  const login = async (username: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
     try {
-      setIsAuthenticated(false);
-      setUserType(null);
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userType');
+      const response = await apiClient.post('/token/', { username, password });
+      
+      const { access, refresh } = response.data;
+      localStorage.setItem('accessToken', access);
+      localStorage.setItem('refreshToken', refresh);
+      
+      // Устанавливаем заголовок для последующих запросов
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+      
+      // Получаем данные пользователя
+      await fetchUser();
+      
+      return true;
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Login failed:", error);
+      // Очищаем в случае ошибки
+      logout();
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Функция выхода
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    delete apiClient.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
+    setUser(null);
+  };
+  
   const contextValue = {
     isAuthenticated,
-    userType,
+    user, // Передаем всего пользователя
     isLoading,
     login,
     logout
@@ -104,4 +108,5 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   );
 };
 
-export const useAuth = () => React.useContext(AuthContext);
+// Хук для использования контекста
+export const useAuth = () => useContext(AuthContext);

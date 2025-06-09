@@ -23,8 +23,8 @@ import BlogDetail from './pages/blog/blog-detail';
 import { useAuth } from './contexts/auth-context';
 
 function App() {
-  const { isAuthenticated, userType, isLoading } = useAuth();
-  
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const userType = user?.role; 
   // Show loading indicator while checking authentication
   if (isLoading) {
     return (

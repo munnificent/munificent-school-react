@@ -28,6 +28,21 @@ class TeacherCoursesViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return self.request.user.courses_taught.all().select_related('teacher', 'subject')
 
+class UpcomingLessonsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Отдает 3 ближайших предстоящих урока для залогиненного студента."""
+    serializer_class = UpcomingLessonSerializer
+    permission_classes = [IsStudent]
+
+    def get_queryset(self):
+        user = self.request.user
+        # Находим курсы, на которые записан студент
+        enrolled_courses = Course.objects.filter(students=user)
+        # Ищем предстоящие уроки для этих курсов, сортируем по дате и берем первые 3
+        return Lesson.objects.filter(
+            course__in=enrolled_courses,
+            date__gte=timezone.now().date() # Только предстоящие или сегодняшние
+        ).order_by('date', 'id')[:3]
+        
 class LessonViewSet(viewsets.ModelViewSet):
     """ViewSet для управления уроками. Полный доступ у админа, частичный у учителя."""
     queryset = Lesson.objects.all()

@@ -49,7 +49,7 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, history]);
 
-  const handleLogin = async () => {
+    const handleLogin = async () => {
     if (!username || !password) {
       setErrorMessage('Пожалуйста, заполните все поля');
       return;
@@ -59,6 +59,7 @@ const Login: React.FC = () => {
     setErrorMessage('');
 
     try {
+      // --- ИЗМЕНЕНИЯ НАЧИНАЮТСЯ ЗДЕСЬ ---
       const success = await login(username, password);
       if (success) {
         addToast({
@@ -66,13 +67,19 @@ const Login: React.FC = () => {
           description: "Добро пожаловать в личный кабинет!",
           color: "success",
         });
-        history.push('/');
+        history.push('/dashboard'); // Принудительный редирект после успешного входа
       } else {
-        setErrorMessage('Неверное имя пользователя или пароль');
+        setErrorMessage('Неверное имя пользователя или пароль.');
+        addToast({
+          title: "Ошибка входа",
+          description: "Пожалуйста, проверьте введенные данные.",
+          color: "danger",
+        });
       }
+      // --- ИЗМЕНЕНИЯ ЗАКАНЧИВАЮТСЯ ЗДЕСЬ ---
     } catch (error) {
       console.error("Login error:", error);
-      setErrorMessage('Произошла ошибка при входе');
+      setErrorMessage('Произошла ошибка при входе. Попробуйте снова.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -180,7 +187,7 @@ const Login: React.FC = () => {
               
               <div className="mt-6 text-center">
                 <Link as={RouteLink} to="/" color="foreground" className="text-sm">
-                  <Icon icon="lucide:arrow-left" className="inline mr-1" size={14} />
+                                    <Icon icon="lucide:arrow-left" className="inline mr-1" width={14} height={14} />
                   Вернуться на главную
                 </Link>
               </div>

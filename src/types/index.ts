@@ -76,12 +76,19 @@ export interface BlogCategory {
 }
 
 
-// User type for authentication
+export interface ProfileData {
+  photo_url?: string | null;
+}
+
+// Обновленный тип пользователя
 export interface User {
+  id: number;
   username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
   role: 'student' | 'teacher' | 'admin';
-  name: string;
-  photoUrl?: string;
+  profile?: ProfileData; // Вложенный объект профиля
 }
 
 // Course package type
