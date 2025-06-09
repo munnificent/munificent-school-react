@@ -1,21 +1,49 @@
-// Teacher type
-export interface Teacher {
+// --- ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ ---
+export interface ProfileData {
+  photo_url: string | null;
+  public_description: string;
+  public_subjects: string;
+  phone: string;
+  school: string;
+  student_class: string;
+  parent_name: string;
+  parent_phone: string;
+}
+
+// --- ПОЛЬЗОВАТЕЛЬ ---
+export interface User {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: 'student' | 'teacher' | 'admin';
+  profile: ProfileData | null;
+}
+
+// --- КУРС ---
+export interface Course {
   id: number;
   name: string;
-  photoUrl: string;
-  subjects: string[];
-  description: string;
+  teacher: User; // Используем полный тип User
+  progress: number;
+  description?: string;
+  student_count?: number;
+  subject?: number;
 }
 
-// Review type
-export interface Review {
+// --- УРОК ---
+export interface Lesson {
   id: number;
-  author: string; 
-  text: string;
-  scoreInfo: string;
+  title: string;
+  date: string;
+  time: string;
+  status: 'пройден' | 'предстоит';
+  recording_url: string | null; // Явно указываем, что поле называется так
+  homework_url: string | null;  // Явно указываем, что поле называется так
 }
 
-// Upcoming lesson type
+// --- ПРЕДСТОЯЩИЙ УРОК ---
 export interface UpcomingLesson {
   id: number;
   courseName: string;
@@ -25,73 +53,48 @@ export interface UpcomingLesson {
   zoomLink: string;
 }
 
-// Course type
-export interface Course {
+// --- ОСТАЛЬНЫЕ ТИПЫ (без изменений) ---
+
+export interface Teacher {
   id: number;
   name: string;
-  teacher: {
-    name: string;
-    photoUrl: string;
-  };
-  progress: number;
+  photoUrl: string;
+  subjects: string[];
+  description: string;
 }
 
-// Lesson type
-export interface Lesson {
+export interface Review {
   id: number;
-  title: string;
-  date: string;
-  status: 'пройден' | 'предстоит';
-  recordingUrl?: string;
-  homeworkUrl?: string;
+  author: string; 
+  text: string;
+  scoreInfo: string;
 }
 
-// Test question type
 export interface TestQuestion {
   id: number;
   question: string;
   options: string[];
-  correctOptionIndex?: number; // For result calculation
+  correctOptionIndex?: number;
 }
 
-
-// Blog post type
 export interface BlogPost {
   id: number;
   title: string;
   excerpt: string;
   content: string;
-  author_name: string; // Поле из сериализатора
-  created_at: string;  // Django отдает дату как строку в формате ISO
+  author_name: string; 
+  created_at: string;
   image_url: string;
-  category: number; // ID категории
-  category_name: string; // Имя категории из сериализатора
+  category: number;
+  category_name: string;
 }
 
-// Тип для категорий блога
 export interface BlogCategory {
     id: number;
     name: string;
     slug: string;
 }
 
-
-export interface ProfileData {
-  photo_url?: string | null;
-}
-
-// Обновленный тип пользователя
-export interface User {
-  id: number;
-  username: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  role: 'student' | 'teacher' | 'admin';
-  profile?: ProfileData; // Вложенный объект профиля
-}
-
-// Course package type
 export interface CoursePackage {
   id: number;
   name: string;

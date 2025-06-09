@@ -5,7 +5,8 @@ class Review(models.Model):
     author = models.CharField(max_length=100, verbose_name='Автор отзыва (имя, класс)')
     text = models.TextField(verbose_name='Текст отзыва')
     score_info = models.CharField(max_length=255, verbose_name='Информация о баллах/оценках')
-    is_published = models.BooleanField(default=True, verbose_name='Опубликован')
+    # Изменяем значение по умолчанию на False
+    is_published = models.BooleanField(default=False, verbose_name='Опубликован')
 
     class Meta:
         verbose_name = 'Отзыв'

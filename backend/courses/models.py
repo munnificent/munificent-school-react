@@ -1,7 +1,8 @@
 # backend/courses/models.py
 
 from django.db import models
-from django.conf import settings # Для ссылки на кастомную модель User
+from django.conf import settings 
+import datetime # Импортируем модуль datetime
 
 class Subject(models.Model):
     """Модель учебного предмета"""
@@ -33,6 +34,8 @@ class Course(models.Model):
     )
     subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Предмет')
     description = models.TextField(verbose_name='Описание курса', blank=True)
+    # ДОБАВЛЕНО: Ссылка на Zoom для курса
+    zoom_link = models.URLField(max_length=500, blank=True, null=True, default="https://zoom.us/j/123456789", verbose_name="Ссылка на Zoom")
     
     class Meta:
         verbose_name = 'Курс'
@@ -50,6 +53,8 @@ class Lesson(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons', verbose_name='Курс')
     title = models.CharField(max_length=200, verbose_name='Название урока')
     date = models.DateField(verbose_name='Дата проведения')
+    # ДОБАВЛЕНО: Время проведения урока
+    time = models.TimeField(verbose_name="Время проведения", default=datetime.time(18, 00))
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='предстоит', verbose_name='Статус')
     recording_url = models.URLField(max_length=500, blank=True, null=True, verbose_name='Ссылка на запись')
     homework_url = models.URLField(max_length=500, blank=True, null=True, verbose_name='Ссылка на ДЗ')
@@ -58,7 +63,8 @@ class Lesson(models.Model):
     class Meta:
         verbose_name = 'Урок'
         verbose_name_plural = 'Уроки'
-        ordering = ['date']
+        # Добавляем сортировку по времени
+        ordering = ['date', 'time']
 
     def __str__(self):
         return f'{self.course.name} - {self.title}'
@@ -67,7 +73,6 @@ class TestQuestion(models.Model):
     """Модель вопроса для теста"""
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='test_questions', verbose_name='Предмет')
     question = models.TextField(verbose_name='Текст вопроса')
-    # Для простоты храним опции как JSON. Можно сделать отдельную модель Option.
     options = models.JSONField(verbose_name='Варианты ответов')
     correct_option_index = models.PositiveSmallIntegerField(verbose_name='Индекс правильного ответа')
 

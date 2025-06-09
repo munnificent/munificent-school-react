@@ -1,215 +1,139 @@
-import React from 'react';
-import { 
-  Card, 
-  CardBody, 
-  Input, 
-  Button, 
-  Avatar, 
-  Divider,
-  Tabs,
-  Tab,
-  Select,
-  SelectItem
-} from '@heroui/react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardBody, Input, Button, Avatar, Divider, Tabs, Tab, Select, SelectItem, Spinner, addToast } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { studentName, classOptions } from '../data/mock-data';
+import { useAuth } from '../contexts/auth-context';
+import { classOptions } from '../data/mock-data';
+import apiClient from '../api/apiClient';
+
+type FormData = { first_name: string; last_name: string; email: string; phone: string; school: string; student_class: string; parent_name: string; parent_phone: string; };
 
 const Profile: React.FC = () => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [selectedTab, setSelectedTab] = React.useState("personal");
-  const [selectedClass, setSelectedClass] = React.useState(new Set(["10 класс"]));
+  const { user, isLoading: isAuthLoading, refetchUser } = useAuth();
   
-  // Mock profile data
-  const [formData, setFormData] = React.useState({
-    name: studentName,
-    email: "test@example.com",
-    phone: "+7 (777) 123-45-67",
-    school: "Гимназия №120",
-    parentName: "Асан Тасанов",
-    parentPhone: "+7 (777) 765-43-21"
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("personal");
+
+  const [formData, setFormData] = useState<FormData>({ first_name: '', last_name: '', email: '', phone: '', school: '', student_class: '', parent_name: '', parent_phone: '' });
   
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const [passwordData, setPasswordData] = useState({ old_password: '', new_password: '', new_password_confirm: '' });
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+        phone: user.profile?.phone || '',
+        school: user.profile?.school || '',
+        student_class: user.profile?.student_class || '',
+        parent_name: user.profile?.parent_name || '',
+        parent_phone: user.profile?.parent_phone || ''
+      });
+    }
+  }, [user]);
   
-  const handleSaveProfile = () => {
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+  const handleInputChange = (field: keyof FormData, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
+  const handlePasswordChange = (field: keyof typeof passwordData, value: string) => setPasswordData(prev => ({ ...prev, [field]: value }));
+  
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    const payload = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        profile: { phone: formData.phone, school: formData.school, student_class: formData.student_class, parent_name: formData.parent_name, parent_phone: formData.parent_phone }
+    };
+    try {
+      await apiClient.patch('/users/me/', payload);
+      addToast({ title: "Успешно!", description: "Ваш профиль был обновлен.", color: "success" });
+      await refetchUser();
       setIsEditing(false);
-    }, 1000);
+    } catch (error) {
+      addToast({ title: "Ошибка", description: "Не удалось сохранить профиль.", color: "danger" });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleChangePassword = async () => {
+      setIsPasswordSaving(true);
+      try {
+          await apiClient.post('/users/change-password/', passwordData);
+          addToast({ title: "Успешно!", description: "Пароль был изменен.", color: "success" });
+          setPasswordData({ old_password: '', new_password: '', new_password_confirm: '' });
+      } catch (error: any) {
+          const errorData = error.response?.data;
+          const errorMessage = Object.values(errorData).flat().join(' ') || "Не удалось изменить пароль.";
+          addToast({ title: "Ошибка", description: errorMessage, color: "danger" });
+      } finally {
+          setIsPasswordSaving(false);
+      }
+  };
+
+  if (isAuthLoading || !user) return <div className="flex justify-center items-center h-96"><Spinner size="lg" label="Загрузка профиля..." /></div>;
   
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Профиль</h1>
-        <p className="text-foreground-500 mt-2">
-          Управляйте вашей учетной записью и настройками
-        </p>
+        <p className="text-foreground-500 mt-2">Управляйте вашей учетной записью и настройками</p>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User info card */}
         <Card className="lg:col-span-1">
           <CardBody className="p-6 flex flex-col items-center text-center">
-            <Avatar
-              src="https://img.heroui.chat/image/avatar?w=200&h=200&u=10"
-              className="w-24 h-24 mb-4"
-              isBordered
-              color="primary"
-              showFallback
-              name={formData.name}
-            />
-            
-            <h2 className="text-xl font-semibold">{formData.name}</h2>
-            <p className="text-foreground-500 mt-1">ID: MS-2023-001</p>
-            
+            <Avatar src={user.profile?.photo_url || ''} className="w-24 h-24 mb-4" isBordered color="primary" showFallback name={`${user.first_name} ${user.last_name}`} />
+            <h2 className="text-xl font-semibold">{user.first_name} {user.last_name}</h2>
+            <p className="text-foreground-500 mt-1">ID: MS-2023-{user.id}</p>
             <Divider className="my-4 w-full" />
-            
             <div className="w-full flex flex-col gap-2 text-left">
-              <div className="flex items-center gap-2">
-                <Icon icon="lucide:mail" width={16} height={16} className="text-foreground-500" />
-                <span className="text-foreground-500">{formData.email}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Icon icon="lucide:phone" width={16} height={16} className="text-foreground-500" />
-                <span className="text-foreground-500">{formData.phone}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Icon icon="lucide:building" width={16} height={16} className="text-foreground-500" />
-                <span className="text-foreground-500">{formData.school}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Icon icon="lucide:graduation-cap" width={16} height={16} className="text-foreground-500" />
-                <span className="text-foreground-500">{Array.from(selectedClass).join(", ")}</span>
-              </div>
+              <div className="flex items-center gap-2"><Icon icon="lucide:mail" width={16} /><span className="text-foreground-500">{user.email}</span></div>
+              <div className="flex items-center gap-2"><Icon icon="lucide:phone" width={16} /><span className="text-foreground-500">{formData.phone || 'Не указан'}</span></div>
+              <div className="flex items-center gap-2"><Icon icon="lucide:building" width={16} /><span className="text-foreground-500">{formData.school || 'Не указана'}</span></div>
+              <div className="flex items-center gap-2"><Icon icon="lucide:graduation-cap" width={16} /><span className="text-foreground-500">{formData.student_class || 'Не указан'}</span></div>
             </div>
           </CardBody>
         </Card>
         
-        {/* Profile tabs */}
         <Card className="lg:col-span-2">
           <CardBody className="p-0">
-            <Tabs 
-              selectedKey={selectedTab} 
-              onSelectionChange={setSelectedTab as any}
-              className="w-full"
-              variant="underlined"
-            >
+            <Tabs selectedKey={selectedTab} onSelectionChange={setSelectedTab as any} className="w-full" variant="underlined">
+              
+              {/* ВОССТАНОВЛЕННАЯ ВКЛАДКА */}
               <Tab key="personal" title="Личные данные">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-semibold">Личные данные</h3>
                     {!isEditing ? (
-                      <Button 
-                        variant="flat" 
-                        color="primary" 
-                        startContent={<Icon icon="lucide:edit" width={16} height={16} />}
-                        onPress={() => setIsEditing(true)}
-                      >
+                      <Button variant="flat" color="primary" startContent={<Icon icon="lucide:edit" width={16} height={16} />} onPress={() => setIsEditing(true)}>
                         Редактировать
                       </Button>
                     ) : (
                       <div className="flex gap-2">
-                        <Button 
-                          variant="flat" 
-                          color="danger"
-                          onPress={() => setIsEditing(false)}
-                        >
-                          Отмена
-                        </Button>
-                        <Button 
-                          color="primary"
-                          onPress={handleSaveProfile}
-                          isLoading={isLoading}
-                        >
-                          Сохранить
-                        </Button>
+                        <Button variant="flat" color="danger" onPress={() => setIsEditing(false)}>Отмена</Button>
+                        <Button color="primary" onPress={handleSaveProfile} isLoading={isSaving}>Сохранить</Button>
                       </div>
                     )}
                   </div>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Имя"
-                      value={formData.name}
-                      onValueChange={(value) => handleInputChange('name', value)}
-                      isReadOnly={!isEditing}
-                    />
-                    
-                    <Input
-                      label="Email"
-                      value={formData.email}
-                      onValueChange={(value) => handleInputChange('email', value)}
-                      isReadOnly={!isEditing}
-                      type="email"
-                    />
-                    
-                    <Input
-                      label="Телефон"
-                      value={formData.phone}
-                      onValueChange={(value) => handleInputChange('phone', value)}
-                      isReadOnly={!isEditing}
-                      type="tel"
-                    />
-                    
-                    <Input
-                      label="Школа"
-                      value={formData.school}
-                      onValueChange={(value) => handleInputChange('school', value)}
-                      isReadOnly={!isEditing}
-                    />
-                    
-                    <Select
-                      label="Класс"
-                      selectedKeys={selectedClass}
-                      onSelectionChange={setSelectedClass as any}
-                      isDisabled={!isEditing}
-                    >
-                      {classOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
+                    <Input label="Имя" value={formData.first_name} onValueChange={(v) => handleInputChange('first_name', v)} isReadOnly={!isEditing}/>
+                    <Input label="Фамилия" value={formData.last_name} onValueChange={(v) => handleInputChange('last_name', v)} isReadOnly={!isEditing}/>
+                    <Input label="Email" value={formData.email} onValueChange={(v) => handleInputChange('email', v)} isReadOnly={!isEditing} type="email"/>
+                    <Input label="Телефон" value={formData.phone} onValueChange={(v) => handleInputChange('phone', v)} isReadOnly={!isEditing} type="tel"/>
+                    <Input label="Школа" value={formData.school} onValueChange={(v) => handleInputChange('school', v)} isReadOnly={!isEditing}/>
+                    <Select label="Класс" selectedKeys={formData.student_class ? new Set([formData.student_class]) : new Set()} onSelectionChange={(keys) => handleInputChange('student_class', Array.from(keys as Set<string>)[0] || '')} isDisabled={!isEditing}>
+                      {classOptions.map((option) => (<SelectItem key={option}>{option}</SelectItem>))}
                     </Select>
                   </div>
-                  
                   <Divider className="my-6" />
-                  
-                  <div className="mb-6">
+                  <div>
                     <h3 className="text-lg font-semibold mb-6">Информация о родителе/опекуне</h3>
-                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input
-                        label="ФИО родителя"
-                        value={formData.parentName}
-                        onValueChange={(value) => handleInputChange('parentName', value)}
-                        isReadOnly={!isEditing}
-                      />
-                      
-                      <Input
-                        label="Телефон родителя"
-                        value={formData.parentPhone}
-                        onValueChange={(value) => handleInputChange('parentPhone', value)}
-                        isReadOnly={!isEditing}
-                        type="tel"
-                      />
+                      <Input label="ФИО родителя" value={formData.parent_name} onValueChange={(v) => handleInputChange('parent_name', v)} isReadOnly={!isEditing}/>
+                      <Input label="Телефон родителя" value={formData.parent_phone} onValueChange={(v) => handleInputChange('parent_phone', v)} isReadOnly={!isEditing} type="tel"/>
                     </div>
                   </div>
                 </div>
@@ -218,75 +142,13 @@ const Profile: React.FC = () => {
               <Tab key="security" title="Безопасность">
                 <div className="p-6">
                   <h3 className="text-lg font-semibold mb-6">Изменение пароля</h3>
-                  
                   <div className="flex flex-col gap-4 max-w-md">
-                    <Input
-                      label="Текущий пароль"
-                      type="password"
-                      placeholder="Введите текущий пароль"
-                    />
-                    
-                    <Input
-                      label="Новый пароль"
-                      type="password"
-                      placeholder="Введите новый пароль"
-                    />
-                    
-                    <Input
-                      label="Подтверждение пароля"
-                      type="password"
-                      placeholder="Подтвердите новый пароль"
-                    />
-                    
+                    <Input label="Текущий пароль" type="password" placeholder="Введите текущий пароль" value={passwordData.old_password} onValueChange={(v) => handlePasswordChange('old_password', v)} />
+                    <Input label="Новый пароль" type="password" placeholder="Введите новый пароль" value={passwordData.new_password} onValueChange={(v) => handlePasswordChange('new_password', v)} />
+                    <Input label="Подтверждение пароля" type="password" placeholder="Подтвердите новый пароль" value={passwordData.new_password_confirm} onValueChange={(v) => handlePasswordChange('new_password_confirm', v)} />
                     <div className="mt-2">
-                      <Button color="primary">
-                        Изменить пароль
-                      </Button>
+                      <Button color="primary" onPress={handleChangePassword} isLoading={isPasswordSaving}>Изменить пароль</Button>
                     </div>
-                  </div>
-                </div>
-              </Tab>
-              
-              <Tab key="notifications" title="Уведомления">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold mb-6">Настройки уведомлений</h3>
-                  
-                  <div className="flex flex-col gap-4">
-                    <Card>
-                      <CardBody className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h4 className="font-medium">Напоминания о занятиях</h4>
-                            <p className="text-foreground-500 text-sm">Получать напоминания за час до начала занятия</p>
-                          </div>
-                          <Button color="primary" variant="flat">Включено</Button>
-                        </div>
-                      </CardBody>
-                    </Card>
-                    
-                    <Card>
-                      <CardBody className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h4 className="font-medium">Email-уведомления</h4>
-                            <p className="text-foreground-500 text-sm">Получать уведомления на email</p>
-                          </div>
-                          <Button color="primary" variant="flat">Включено</Button>
-                        </div>
-                      </CardBody>
-                    </Card>
-                    
-                    <Card>
-                      <CardBody className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h4 className="font-medium">SMS-уведомления</h4>
-                            <p className="text-foreground-500 text-sm">Получать уведомления по SMS</p>
-                          </div>
-                          <Button variant="flat">Отключено</Button>
-                        </div>
-                      </CardBody>
-                    </Card>
                   </div>
                 </div>
               </Tab>
