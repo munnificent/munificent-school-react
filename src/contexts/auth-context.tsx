@@ -6,18 +6,18 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<User | null>; // Изменено
   logout: () => void;
-  refetchUser: () => Promise<void>; // Новая функция
+  refetchUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   isLoading: true,
-  login: async () => false,
+  login: async () => null, // Изменено
   logout: () => {},
-  refetchUser: async () => {}, // Пустая функция по умолчанию
+  refetchUser: async () => {},
 });
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
@@ -36,44 +36,43 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const fetchUser = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      logout();
+      setIsLoading(false); // Важно: завершить загрузку, если токена нет
       return;
     }
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     try {
-      const { data } = await apiClient.get('/users/me/');
+      const { data } = await apiClient.get<User>('/users/me/');
       setUser(data);
       setIsAuthenticated(true);
     } catch (error) {
       console.error("Failed to fetch user", error);
       logout();
+    } finally {
+        setIsLoading(false); // Завершаем загрузку в любом случае
     }
   }, [logout]);
 
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      setIsLoading(true);
-      await fetchUser();
-      setIsLoading(false);
-    };
-    checkAuthStatus();
+    fetchUser();
   }, [fetchUser]);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
+  const login = async (username: string, password: string): Promise<User | null> => {
     try {
       const response = await apiClient.post('/token/', { username, password });
       const { access, refresh } = response.data;
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
-      await fetchUser();
-      setIsLoading(false);
-      return true;
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+      
+      // Сразу после получения токена запрашиваем данные пользователя
+      const { data: userData } = await apiClient.get<User>('/users/me/');
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData; // Возвращаем пользователя
     } catch (error) {
       console.error("Login failed:", error);
       logout();
-      setIsLoading(false);
-      return false;
+      return null; // Возвращаем null в случае ошибки
     }
   };
   
@@ -83,7 +82,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     isLoading,
     login,
     logout,
-    refetchUser: fetchUser // Передаем функцию fetchUser как refetchUser
+    refetchUser: fetchUser
   };
 
   return (

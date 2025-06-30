@@ -1,119 +1,95 @@
-import React from 'react';
-import { Switch, Route, Redirect } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { BrowserRouter as Router, Switch, Route, Redirect } from 'react-router-dom';
+import { AuthContext, AuthProvider } from './contexts/auth-context';
+import AppLayout from './components/app-layout';
+import { Spinner } from '@heroui/react';
+
+// --- Импорт страниц ---
 import LandingPage from './pages/landing-page';
+import LoginPage from './pages/login';
+import CoursesPage from './pages/courses';
+// ... (остальные импорты страниц)
 import Dashboard from './pages/dashboard';
 import MyCourses from './pages/my-courses';
-import CourseDetail from './pages/course-detail';
 import TestSimulator from './pages/test-simulator';
 import Profile from './pages/profile';
-import TeacherDashboard from './pages/teacher-dashboard';
 import AdminDashboard from './pages/admin-dashboard';
-import TeacherStudents from './pages/teacher-students';
-import AdminStudents from './pages/admin-students';
 import AdminUsers from './pages/admin-users';
+import AdminStudents from './pages/admin-students';
 import AdminCourses from './pages/admin-courses';
 import AdminRequests from './pages/admin-requests';
 import AdminSettings from './pages/admin-settings';
-import AppLayout from './components/app-layout';
-import Login from './pages/login';
-import AboutUs from './pages/about-us';
-import Courses from './pages/courses';
-import Blog from './pages/blog/index';
-import BlogDetail from './pages/blog/blog-detail';
-import { useAuth } from './contexts/auth-context';
 
-function App() {
-  const { isAuthenticated, user, isLoading } = useAuth();
-  const userType = user?.role; 
-  // Show loading indicator while checking authentication
+const LoadingScreen = () => (
+  <div className="flex items-center justify-center h-screen">
+      <Spinner size="lg" label="Загрузка..." />
+  </div>
+);
+
+const AppRoutes: React.FC = () => {
+  const { user, isAuthenticated, isLoading } = useContext(AuthContext);
+
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-foreground-500">Загрузка...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
-  
+
   return (
     <Switch>
-      {/* Public routes - accessible without authentication */}
-      <Route exact path="/">
-        {isAuthenticated ? (
-          <Redirect to="/dashboard" />
-        ) : (
-          <LandingPage />
-        )}
-      </Route>
       <Route path="/login">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <Login />}
+        {isAuthenticated ? <Redirect to="/app" /> : <LoginPage />}
       </Route>
-      <Route path="/about-us">
-        <AboutUs />
-      </Route>
-      <Route path="/courses">
-        <Courses />
-      </Route>
-     <Route exact path="/blog"> 
-       <Blog />
-     </Route>
-     <Route path="/blog/:id">
-      <BlogDetail />
-     </Route>
-      
-      
-      {/* Protected routes - require authentication */}
-      <Route>
+
+      {/* Маршруты, которые доступны только авторизованным пользователям */}
+      <Route path="/app">
         {isAuthenticated ? (
-          <AppLayout userType={userType}>
+          <AppLayout>
             <Switch>
-              <Route exact path="/dashboard">
-                {userType === 'student' && <Dashboard />}
-                {userType === 'teacher' && <TeacherDashboard />}
-                {userType === 'admin' && <AdminDashboard />}
-              </Route>
-              <Route exact path="/my-courses">
-                <MyCourses />
-              </Route>
-              <Route path="/my-courses/:id">
-                <CourseDetail />
-              </Route>
-              <Route path="/test-simulator">
-                <TestSimulator />
-              </Route>
-              <Route path="/profile">
-                <Profile />
-              </Route>
-              <Route path="/students">
-                {userType === 'teacher' && <TeacherStudents />}
-                {userType === 'admin' && <AdminStudents />}
-              </Route>
-              <Route path="/users">
-                <AdminUsers />
-              </Route>
-              <Route path="/courses">
-                <AdminCourses />
-              </Route>
-              <Route path="/requests">
-                <AdminRequests />
-              </Route>
-              <Route path="/settings">
-                <AdminSettings />
-              </Route>
+              {user?.role === 'admin' && (
+                <>
+                  <Route path="/app/admin/dashboard" component={AdminDashboard} />
+                  <Route path="/app/admin/users" component={AdminUsers} />
+                  <Route path="/app/admin/students" component={AdminStudents} />
+                  <Route path="/app/admin/courses" component={AdminCourses} />
+                  <Route path="/app/admin/requests" component={AdminRequests} />
+                  <Route path="/app/admin/settings" component={AdminSettings} />
+                </>
+              )}
+              {user?.role === 'student' && (
+                <>
+                  <Route path="/app/dashboard" component={Dashboard} />
+                  <Route path="/app/my-courses" component={MyCourses} />
+                  <Route path="/app/tests" component={TestSimulator} />
+                </>
+              )}
+              {/* Общие маршруты для всех залогиненных */}
+              <Route path="/app/profile" component={Profile} />
+              
+              {/* Редирект по умолчанию в зависимости от роли */}
+              <Redirect to={user?.role === 'admin' ? '/app/admin/dashboard' : '/app/dashboard'} />
             </Switch>
           </AppLayout>
         ) : (
           <Redirect to="/login" />
         )}
       </Route>
-      
-      {/* Catch-all redirect */}
-      <Route>
-        <Redirect to="/" />
+
+      {/* Публичные страницы */}
+      <Route path="/">
+          {isAuthenticated ? <Redirect to="/app" /> : <LandingPage />}
       </Route>
+      {/* Добавьте сюда другие публичные маршруты, если они есть */}
+      
     </Switch>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

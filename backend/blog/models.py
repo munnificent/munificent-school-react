@@ -1,40 +1,24 @@
-# backend/blog/models.py
-
 from django.db import models
-from django.conf import settings
+from django.conf import settings # Используем для ссылки на модель User
 
+# Create your models here.
 class Category(models.Model):
-    """Модель категории блога"""
-    name = models.CharField(max_length=100, unique=True, verbose_name='Название категории')
-    slug = models.SlugField(max_length=100, unique=True, help_text="Используйте только латиницу, цифры, и дефисы")
-
-    class Meta:
-        verbose_name = 'Категория блога'
-        verbose_name_plural = 'Категории блога'
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
 
     def __str__(self):
         return self.name
 
 class Post(models.Model):
-    """Модель поста в блоге"""
-    title = models.CharField(max_length=255, verbose_name='Заголовок')
-    excerpt = models.TextField(verbose_name='Краткое содержание')
-    content = models.TextField(verbose_name='Полное содержание')
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        verbose_name='Автор'
-    )
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='posts', verbose_name='Категория')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
-    image_url = models.URLField(max_length=500, blank=True, null=True, verbose_name='URL изображения')
-
-    class Meta:
-        verbose_name = 'Пост'
-        verbose_name_plural = 'Посты'
-        ordering = ['-created_at']
-
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    excerpt = models.CharField(max_length=300, blank=True)
+    # Используем settings.AUTH_USER_MODEL для безопасной ссылки на вашу модель пользователя
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    image_url = models.URLField(blank=True, null=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    
     def __str__(self):
         return self.title

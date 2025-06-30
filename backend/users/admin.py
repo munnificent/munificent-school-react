@@ -1,37 +1,35 @@
-# backend/users/admin.py
-
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.admin import UserAdmin
 from .models import User, Profile
 
-# Эта часть остается без изменений
-class ProfileInline(admin.StackedInline):
-    model = Profile
-    can_delete = False
-    verbose_name_plural = 'Профили'
-    fk_name = 'user'
+class CustomUserAdmin(UserAdmin):
+    """
+    Кастомная конфигурация для модели User в админ-панели.
+    """
+    # Добавляем кастомные поля в список и фильтры
+    list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'is_staff')
+    list_filter = ('role', 'is_staff', 'is_active', 'groups')
 
-# В этот класс мы добавляем один новый метод
-class CustomUserAdmin(BaseUserAdmin):
-    inlines = (ProfileInline,)
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'role')
-    list_filter = ('role', 'is_staff', 'is_superuser', 'groups')
+    # Добавляем поле role в стандартные наборы полей для редактирования
+    # UserAdmin.fieldsets - это кортеж, поэтому мы преобразуем его в список для модификации
+    fieldsets = list(UserAdmin.fieldsets)
+    # Добавляем наш набор полей 'Дополнительная информация'
+    fieldsets.append(
+        ('Дополнительная информация', {'fields': ('role',)})
+    )
     
-    fieldsets = BaseUserAdmin.fieldsets + (
-        (None, {'fields': ('role',)}),
-    )
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        (None, {'fields': ('role',)}),
-    )
+    # Чтобы можно было редактировать профиль вместе с пользователем
+    # class ProfileInline(admin.StackedInline):
+    #     model = Profile
+    #     can_delete = False
+    #     verbose_name_plural = 'Профиль'
 
-    # ДОБАВЛЕННЫЙ МЕТОД
-    def get_inlines(self, request, obj=None):
-        """
-        Не показывать форму профиля на странице создания пользователя.
-        """
-        if obj is None:
-            return []
-        return super().get_inlines(request, obj)
+    # inlines = (ProfileInline,)
 
-# Регистрация остается без изменений
+# Регистрируем нашу кастомную модель User с кастомной админкой
 admin.site.register(User, CustomUserAdmin)
+
+# Также регистрируем модель Profile для отдельного просмотра/редактирования
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'student_class', 'parent_name', 'parent_phone')

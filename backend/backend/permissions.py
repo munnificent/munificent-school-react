@@ -1,24 +1,37 @@
-# backend/backend/permissions.py
+from rest_framework import permissions
 
-from rest_framework.permissions import BasePermission
-
-class IsAdmin(BasePermission):
+class IsAdminOrReadOnly(permissions.BasePermission):
     """
-    Разрешает доступ только пользователям с ролью 'admin'.
+    Кастомное правило доступа:
+    - Разрешает полный доступ администраторам (is_staff=True).
+    - Разрешает доступ только для чтения (GET, HEAD, OPTIONS) всем остальным.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role == 'admin'
+        # Разрешить запросы на чтение всем
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Разрешить запросы на запись только администраторам
+        return request.user and request.user.is_staff
 
-class IsTeacher(BasePermission):
+class IsAdmin(permissions.BasePermission):
     """
-    Разрешает доступ только пользователям с ролью 'teacher'.
+    Кастомное правило доступа:
+    - Разрешает доступ только администраторам (is_staff=True).
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role == 'teacher'
+        return request.user and request.user.is_staff
 
-class IsStudent(BasePermission):
+class IsOwnerOrReadOnly(permissions.BasePermission):
     """
-    Разрешает доступ только пользователям с ролью 'student'.
+    Кастомное правило доступа:
+    - Разрешает редактирование только владельцу объекта.
+    - Разрешает чтение всем.
     """
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role == 'student'
+    def has_object_permission(self, request, view, obj):
+        # Разрешить запросы на чтение всем
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Разрешить запросы на запись только владельцу объекта
+        return obj.user == request.user

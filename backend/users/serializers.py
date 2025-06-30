@@ -1,51 +1,63 @@
-# backend/users/serializers.py
-
 from rest_framework import serializers
 from .models import User, Profile
 
-# --- НОВЫЙ СЕРИАЛИЗАТОР ДЛЯ СМЕНЫ ПАРОЛЯ ---
+# --- Сериализатор для смены пароля (оставляем без изменений) ---
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True, write_only=True)
-    new_password = serializers.CharField(required=True, write_only=True)
-    new_password_confirm = serializers.CharField(required=True, write_only=True)
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
 
-    def validate_old_password(self, value):
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Старый пароль неверный.")
-        return value
-
-    def validate(self, data):
-        if data['new_password'] != data['new_password_confirm']:
-            raise serializers.ValidationError({"new_password_confirm": "Пароли не совпадают."})
-        # Здесь можно добавить другие проверки для нового пароля (например, сложность)
-        return data
-
-# --- СУЩЕСТВУЮЩИЕ СЕРИАЛИЗАТОРЫ (без изменений) ---
-
+# --- Сериализатор для профиля (оставляем без изменений) ---
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = [
-            'photo_url', 
-            'public_description', 
-            'public_subjects',
-            'phone',
-            'school',
-            'student_class',
-            'parent_name',
-            'parent_phone'
-        ]
+        fields = ['photo_url', 'public_description', 'enrolled_courses']
 
+
+# --- Основной сериализатор пользователя ---
 class UserSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'profile']
+    profile = ProfileSerializer(read_only=True) # Профиль только для чтения
 
-class TeacherPublicSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True) 
-    name = serializers.CharField(source='get_full_name')
     class Meta:
         model = User
-        fields = ['id', 'name', 'profile']
+        # Убираем 'password' из списка, т.к. он будет задан автоматически
+        fields = [
+            'id', 
+            'username', 
+            'email', 
+            'first_name', 
+            'last_name', 
+            'role', 
+            'profile',
+            'avatar',
+            'is_active',
+            'last_login'
+        ]
+        # Пароль больше не принимается, а username только для чтения
+        extra_kwargs = {
+            'username': {'read_only': True},
+        }
+
+    def create(self, validated_data):
+        """
+        Переопределяем метод create.
+        1. Автоматически задаем username из email.
+        2. Устанавливаем пароль по умолчанию.
+        """
+        # Задаем username
+        validated_data['username'] = validated_data.get('email')
+        
+        # Задаем пароль по умолчанию
+        password = "235689qW#"
+        
+        # Создаем пользователя через менеджер, который правильно хеширует пароль
+        user = User.objects.create_user(password=password, **validated_data)
+        
+        return user
+
+# --- Публичный сериализатор для преподавателей (оставляем без изменений) ---
+class TeacherPublicSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'profile']

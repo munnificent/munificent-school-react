@@ -24,6 +24,7 @@ CORS_ALLOWED_ORIGINS = [
 
 
 
+# ...
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'blog.apps.BlogConfig',
     'applications.apps.ApplicationsConfig',
     'reviews.apps.ReviewsConfig',
+    'system_settings.apps.SystemSettingsConfig', 
 ]
 
 

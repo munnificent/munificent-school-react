@@ -1,297 +1,129 @@
-import React from 'react';
-import { 
-  Card, 
-  CardBody, 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
-  TableCell,
-  Chip,
-  Input,
-  Button,
-  Avatar,
-  Tabs,
-  Tab,
-  Select,
-  SelectItem
-} from '@heroui/react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Input, Button, Spinner, Tabs, Tab, Avatar, addToast, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
+import apiClient from '../api/apiClient';
+import { useDebounce } from '../hooks/useDebounce';
+import { User } from '../types';
+import UserFormModal from '../components/admin/UserFormModal';
+import DeleteConfirmationModal from '../components/admin/DeleteConfirmationModal';
+
+interface PaginatedResponse<T> { results: T[]; }
 
 const AdminUsers: React.FC = () => {
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [selectedTab, setSelectedTab] = React.useState("all");
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRole, setSelectedRole] = useState<string>("all");
   
-  // Mock users data
-  const users = [
-    {
-      id: 1,
-      name: "Ескендыр Аманов",
-      photo: "https://img.heroui.chat/image/avatar?w=200&h=200&u=10",
-      email: "eskendyr@example.com",
-      phone: "+7 (777) 123-45-67",
-      role: "student",
-      status: "active",
-      lastLogin: "Сегодня, 10:15"
-    },
-    {
-      id: 2,
-      name: "Айгерим Нурсултанова",
-      photo: "https://img.heroui.chat/image/avatar?w=200&h=200&u=1",
-      email: "aigerim@example.com",
-      phone: "+7 (777) 234-56-78",
-      role: "teacher",
-      status: "active",
-      lastLogin: "Вчера, 18:30"
-    },
-    {
-      id: 3,
-      name: "Данияр Серикулы",
-      photo: "https://img.heroui.chat/image/avatar?w=200&h=200&u=2",
-      email: "daniyar@example.com",
-      phone: "+7 (777) 345-67-89",
-      role: "teacher",
-      status: "active",
-      lastLogin: "Сегодня, 09:45"
-    },
-    {
-      id: 4,
-      name: "Алия Сериккызы",
-      photo: "https://img.heroui.chat/image/avatar?w=200&h=200&u=11",
-      email: "aliya@example.com",
-      phone: "+7 (777) 456-78-90",
-      role: "student",
-      status: "inactive",
-      lastLogin: "3 дня назад"
-    },
-    {
-      id: 5,
-      name: "Арман Токаев",
-      photo: "https://img.heroui.chat/image/avatar?w=200&h=200&u=4",
-      email: "arman@example.com",
-      phone: "+7 (777) 567-89-01",
-      role: "teacher",
-      status: "inactive",
-      lastLogin: "Неделю назад"
-    },
-    {
-      id: 6,
-      name: "Админ Системы",
-      photo: "https://img.heroui.chat/image/avatar?w=200&h=200&u=20",
-      email: "admin@example.com",
-      phone: "+7 (777) 987-65-43",
-      role: "admin",
-      status: "active",
-      lastLogin: "Сегодня, 08:30"
-    }
-  ];
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter users based on search query and selected tab
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (selectedTab === "all") return matchesSearch;
-    return matchesSearch && user.role === selectedTab;
-  });
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Helper function for role display
-  const getRoleChip = (role: string) => {
-    let color = "default";
-    let label = "";
-    
-    switch(role) {
-      case "admin":
-        color = "danger";
-        label = "Администратор";
-        break;
-      case "teacher":
-        color = "primary";
-        label = "Преподаватель";
-        break;
-      case "student":
-        color = "success";
-        label = "Ученик";
-        break;
-    }
-    
-    return (
-      <Chip color={color as any} variant="flat" size="sm">
-        {label}
-      </Chip>
-    );
-  };
-
-  // Helper function for status display
-  const getStatusChip = (status: string) => {
-    let color = "default";
-    let label = "";
-    
-    switch(status) {
-      case "active":
-        color = "success";
-        label = "Активен";
-        break;
-      case "inactive":
-        color = "default";
-        label = "Неактивен";
-        break;
-    }
-    
-    return (
-      <Chip color={color as any} variant="flat" size="sm">
-        {label}
-      </Chip>
-    );
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Пользователи</h1>
-        <p className="text-foreground-500 mt-2">
-          Управление пользователями системы
-        </p>
-      </div>
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (selectedRole !== 'all') params.append('role', selectedRole);
       
+      // --- ИЗМЕНЕНИЕ ЗДЕСЬ: убираем /all/ ---
+      const response = await apiClient.get<PaginatedResponse<User> | User[]>(`/users/?${params.toString()}`);
+      
+      if (response.data && 'results' in response.data && Array.isArray(response.data.results)) {
+        setUsers(response.data.results);
+      } else if (Array.isArray(response.data)) {
+        setUsers(response.data);
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      addToast({ title: "Ошибка", description: "Не удалось загрузить пользователей", color: "danger" });
+      setUsers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearch, selectedRole]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleEdit = (user: User) => {
+    setSelectedUser(user);
+    setIsUserModalOpen(true);
+  };
+
+  const handleDelete = (user: User) => {
+    setSelectedUser(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedUser) return;
+    setIsDeleting(true);
+    try {
+      // --- ИЗМЕНЕНИЕ ЗДЕСЬ: убираем /all/ ---
+      await apiClient.delete(`/users/${selectedUser.id}/`);
+      addToast({ title: "Успех", description: `Пользователь ${selectedUser.email} удален.`, color: "success" });
+      fetchUsers();
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      addToast({ title: "Ошибка", description: "Не удалось удалить пользователя.", color: "danger" });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const roleChips: { [key: string]: React.ReactElement } = {
+    student: <Chip color="primary" variant="flat" size="sm">Ученик</Chip>,
+    teacher: <Chip color="success" variant="flat" size="sm">Преподаватель</Chip>,
+    admin: <Chip color="secondary" variant="flat" size="sm">Администратор</Chip>,
+  };
+  
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+      <div className="mb-8 flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Пользователи</h1>
+        <Button color="primary" onPress={() => { setSelectedUser(null); setIsUserModalOpen(true); }} startContent={<Icon icon="lucide:plus" />}>Добавить пользователя</Button>
+      </div>
       <Card>
-        <CardBody className="p-0">
-          <Tabs 
-            selectedKey={selectedTab} 
-            onSelectionChange={setSelectedTab as any}
-            variant="underlined" 
-            aria-label="User tabs"
-          >
-            <Tab 
-              key="all" 
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:users" width={16} height={16} />
-                  <span>Все</span>
-                </div>
-              }
-            >
-              <div className="p-6">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between mb-6">
-                  <div className="flex-1 max-w-md">
-                    <Input
-                      placeholder="Поиск пользователей..."
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      startContent={<Icon icon="lucide:search" width={16} height={16} className="text-foreground-500" />}
-                      clearable
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Select defaultSelectedKeys={["all"]} className="w-40">
-                      <SelectItem key="all" value="all">Все статусы</SelectItem>
-                      <SelectItem key="active" value="active">Активные</SelectItem>
-                      <SelectItem key="inactive" value="inactive">Неактивные</SelectItem>
-                    </Select>
-                    
-                    <Button color="primary" startContent={<Icon icon="lucide:plus" width={16} height={16} />}>
-                      Добавить
-                    </Button>
-                  </div>
-                </div>
-                
-                <Table aria-label="Таблица пользователей" removeWrapper>
-                  <TableHeader>
-                    <TableColumn>ПОЛЬЗОВАТЕЛЬ</TableColumn>
-                    <TableColumn>КОНТАКТЫ</TableColumn>
-                    <TableColumn>РОЛЬ</TableColumn>
-                    <TableColumn>СТАТУС</TableColumn>
-                    <TableColumn>ПОСЛЕДНИЙ ВХОД</TableColumn>
-                    <TableColumn>ДЕЙСТВИЯ</TableColumn>
-                  </TableHeader>
-                  <TableBody emptyContent="Пользователи не найдены">
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar src={user.photo} size="sm" />
-                            <span className="font-medium">{user.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="text-sm">{user.email}</span>
-                            <span className="text-xs text-foreground-500">{user.phone}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getRoleChip(user.role)}</TableCell>
-                        <TableCell>{getStatusChip(user.status)}</TableCell>
-                        <TableCell>
-                          <span className="text-sm">{user.lastLogin}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              aria-label="Редактировать"
-                            >
-                              <Icon icon="lucide:pencil" width={16} height={16} />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              aria-label="Подробнее"
-                            >
-                              <Icon icon="lucide:more-vertical" width={16} height={16} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Tab>
-            
-            <Tab 
-              key="admin" 
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:shield" width={16} height={16} />
-                  <span>Администраторы</span>
-                </div>
-              }
-            />
-            
-            <Tab 
-              key="teacher" 
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:user-check" width={16} height={16} />
-                  <span>Преподаватели</span>
-                </div>
-              }
-            />
-            
-            <Tab 
-              key="student" 
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:graduation-cap" width={16} height={16} />
-                  <span>Ученики</span>
-                </div>
-              }
-            />
-          </Tabs>
+        <CardBody className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between mb-4">
+            <Input placeholder="Поиск по имени, email..." value={searchQuery} onValueChange={setSearchQuery} startContent={<Icon icon="lucide:search" />} isClearable className="flex-1 max-w-md"/>
+            <Tabs aria-label="Фильтр по ролям" selectedKey={selectedRole} onSelectionChange={(key) => setSelectedRole(key as string)}>
+              <Tab key="all" title="Все" /><Tab key="admin" title="Администраторы" /><Tab key="teacher" title="Преподаватели" /><Tab key="student" title="Ученики" />
+            </Tabs>
+          </div>
+          <Table aria-label="Таблица пользователей" removeWrapper>
+            <TableHeader>
+              <TableColumn>ПОЛЬЗОВАТЕЛЬ</TableColumn><TableColumn>РОЛЬ</TableColumn><TableColumn>СТАТУС</TableColumn><TableColumn>ПОСЛЕДНИЙ ВХОД</TableColumn><TableColumn>ДЕЙСТВИЯ</TableColumn>
+            </TableHeader>
+            <TableBody items={users} isLoading={isLoading} loadingContent={<Spinner />} emptyContent="Пользователи не найдены.">
+              {(item) => (
+                <TableRow key={item.id}>
+                  <TableCell><div className="flex items-center gap-3"><Avatar src={item.avatar} name={`${item.first_name} ${item.last_name}`} size="sm" /><div><p className="font-medium">{item.first_name} {item.last_name}</p><p className="text-sm text-foreground-500">{item.email}</p></div></div></TableCell>
+                  <TableCell>{roleChips[item.role]}</TableCell>
+                  <TableCell><Chip color={item.is_active ? "success" : "default"} variant="dot" size="sm">{item.is_active ? "Активен" : "Неактивен"}</Chip></TableCell>
+                  <TableCell>{item.last_login ? new Date(item.last_login).toLocaleString('ru-RU') : "Никогда"}</TableCell>
+                  <TableCell>
+                    <Dropdown>
+                      <DropdownTrigger><Button isIconOnly variant="light" size="sm"><Icon icon="lucide:more-vertical" /></Button></DropdownTrigger>
+                      <DropdownMenu aria-label="Действия">
+                        <DropdownItem key="edit" onPress={() => handleEdit(item)}>Редактировать</DropdownItem>
+                        <DropdownItem key="delete" className="text-danger" color="danger" onPress={() => handleDelete(item)}>Удалить</DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardBody>
       </Card>
+      <UserFormModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} onSuccess={fetchUsers} currentUser={selectedUser}/>
+      <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete} itemName={selectedUser?.email || ''} isDeleting={isDeleting}/>
     </motion.div>
   );
 };
