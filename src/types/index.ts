@@ -36,3 +36,19 @@ export interface Lesson {
   content: string;
   course: number;
 }
+
+export interface Review {
+  id: number;
+  text: string;
+  author: string;
+  scoreInfo: string;
+}
+
+export interface UpcomingLesson {
+  id: number;
+  courseName: string;
+  teacherName: string;
+  date: string;
+  time: string;
+  zoomLink: string;
+}

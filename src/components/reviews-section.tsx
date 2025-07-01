@@ -2,9 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardBody, Avatar, Spinner } from '@heroui/react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
-import { Review } from '../types';
 import apiClient from '../api/apiClient';
+import { Review } from '../types';
+// --- Типы и константы ---
 
+
+const SECTION_CONTENT = {
+  title: 'Им уже не страшно. Скоро и тебе не будет.',
+};
+
+// --- Под-компонент для карточки отзыва ---
+const ReviewCard: React.FC<{ review: Review; index: number }> = ({ review, index }) => {
+  const authorName = review.author.split(',')[0];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+    >
+      <Card className="h-full">
+        <CardBody className="p-6 flex flex-col">
+          <div className="mb-4 text-primary">
+            <Icon icon="lucide:quote" width={32} height={32} />
+          </div>
+          <p className="mb-6 italic text-foreground-700 grow">"{review.text}"</p>
+          <div className="flex items-center mt-auto">
+            <Avatar
+              name={authorName}
+              size="md"
+              color="primary"
+            />
+            <div className='ml-4'>
+              <h4 className="font-semibold">{review.author}</h4>
+              <p className="text-sm text-success font-medium">{review.scoreInfo}</p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+    </motion.div>
+  );
+};
+
+// --- Основной компонент ---
 export const ReviewsSection: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -12,7 +53,7 @@ export const ReviewsSection: React.FC = () => {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const response = await apiClient.get('/reviews/');
+        const response = await apiClient.get<Review[]>('/reviews/');
         setReviews(response.data);
       } catch (error) {
         console.error("Failed to fetch reviews:", error);
@@ -28,7 +69,7 @@ export const ReviewsSection: React.FC = () => {
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Им уже не страшно. Скоро и тебе не будет.
+            {SECTION_CONTENT.title}
           </h2>
         </div>
         
@@ -37,34 +78,7 @@ export const ReviewsSection: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {reviews.map((review, index) => (
-              <motion.div
-                key={review.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <Card className="h-full">
-                  <CardBody className="p-6">
-                    <div className="mb-4 text-primary">
-                      <Icon icon="lucide:quote" width={32} height={32} />
-                    </div>
-                    <p className="mb-6 italic text-foreground-700">"{review.text}"</p>
-                    <div className="flex items-center mt-auto">
-                      <Avatar
-                        name={review.author.split(',')[0]}
-                        className="mr-4"
-                        size="md"
-                        color="primary"
-                      />
-                      <div>
-                        <h4 className="font-semibold">{review.author}</h4>
-                        <p className="text-sm text-success font-medium">{review.scoreInfo}</p>
-                      </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              </motion.div>
+              <ReviewCard key={review.id} review={review} index={index} />
             ))}
           </div>
         )}
